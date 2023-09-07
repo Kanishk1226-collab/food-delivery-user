@@ -8,7 +8,6 @@
         <artifactId>food-delivery-user</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
-
     <artifactId>food-delivery-user-entity</artifactId>
 
     <dependencies>
@@ -17,12 +16,17 @@
             <artifactId>food-delivery-user-configuration</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
-
         <dependency>
             <groupId>com.example.food.delivery</groupId>
             <artifactId>food-delivery-user-rest-web-model</artifactId>
             <version>0.0.1-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
+        <!--        <dependency>-->
+<!--            <groupId>com.example.food.delivery</groupId>-->
+<!--            <artifactId>food-delivery-user-rest-web-model</artifactId>-->
+<!--            <version>0.0.1-SNAPSHOT</version>-->
+<!--        </dependency>-->
 
     </dependencies>
 

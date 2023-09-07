@@ -27,8 +27,6 @@ public class RestaurantAgentRequest {
     private String restAgentPassword;
 
     @NotBlank(message = "Restaurant Agent phone cannot be blank")
-    @Pattern(regexp = "\\d{10,15}", message = "Invalid phone number")
+    @Pattern(regexp = "\\d{10}", message = "Phone number should contain only number and it should be 10 digits")
     private String restAgentPhone;
-
-
 }

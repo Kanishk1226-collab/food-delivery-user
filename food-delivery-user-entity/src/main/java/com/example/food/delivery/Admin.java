@@ -37,17 +37,12 @@ public class Admin {
     @Column(name = EntityConstants.ADMIN_ROLE)
     private AdminRole adminRole;
 
+    @NotBlank(message = "Admin phone number cannot be blank")
+    @Pattern(regexp = "\\d{10}", message = "Phone number should contain only number and it should be 10 digits")
+    @Column(name = EntityConstants.ADMIN_PHONE_NO)
+    private String phoneNo;
+
     @Column(name = EntityConstants.ADMIN_PASSWORD)
     @NotBlank(message = "Admin Password cannot be blank")
     private String adminPassword;
-
-    @Column(name = EntityConstants.IS_LOGGED_IN)
-    private Boolean isLoggedIn;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(  name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles = new HashSet<>();
-
 }

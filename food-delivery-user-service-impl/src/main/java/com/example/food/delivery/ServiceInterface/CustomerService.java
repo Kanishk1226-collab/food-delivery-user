@@ -9,9 +9,7 @@ public interface CustomerService {
     ResponseEntity<BaseResponse<?>> createCustomer(CustomerRequest customerRequest);
     ResponseEntity<BaseResponse<?>> loginCustomer(LoginRequest loginRequest);
     ResponseEntity<BaseResponse<?>> logoutCustomer(String customerEmail);
-    ResponseEntity<BaseResponse<?>> isCustomerLoggedIn(String customerEmail);
     ResponseEntity<BaseResponse<?>> getAllCustomer(String email, int page);
-    ResponseEntity<BaseResponse<?>> deleteCustomer(int customerId);
-    ResponseEntity<BaseResponse<?>> isValidCustomerEmail(String custEmail);
+    ResponseEntity<BaseResponse<?>> deleteCustomer(String custEmail);
 
 }

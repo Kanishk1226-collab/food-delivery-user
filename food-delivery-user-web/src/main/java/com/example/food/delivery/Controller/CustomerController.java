@@ -10,36 +10,38 @@ import com.example.food.delivery.ServiceInterface.CustomerService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+//@RequestMapping("/customer")
 public class CustomerController {
     @Autowired
     private CustomerService custService;
 
-    @PostMapping(value = "/createCustomer")
+    @PostMapping(value = "/auth/customer/signup")
     public ResponseEntity<BaseResponse<?>> createCustomer(@Valid @RequestBody CustomerRequest customerRequest){
         return custService.createCustomer(customerRequest);
     }
 
-    @PutMapping("/customerLogin")
+    @PostMapping("/auth/customer/login")
     public ResponseEntity<BaseResponse<?>> loginCustomer(@Valid @RequestBody LoginRequest loginRequest) {
         return custService.loginCustomer(loginRequest);
     }
 
-    @PutMapping("/customerLogout")
-    public ResponseEntity<BaseResponse<?>> logoutCustomer(@RequestParam String customerEmail) {
-        return custService.logoutCustomer(customerEmail);
+    @PutMapping("/customer/logout")
+    @PreAuthorize("#userRole == 'CUSTOMER'")
+    public ResponseEntity<BaseResponse<?>> logoutCustomer(@RequestHeader("userEmail") String userEmail,
+                                                          @RequestHeader("userRole") String userRole) {
+        return custService.logoutCustomer(userEmail);
     }
 
-    @GetMapping("/isCustomerLoggedIn")
-    public ResponseEntity<BaseResponse<?>> isCustomerLoggedIn(@RequestParam String customerEmail) {
-        return custService.isCustomerLoggedIn(customerEmail);
-    }
-
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
     @GetMapping(value = "/api/auth/getCustomers")
-    public ResponseEntity<?> getAllCustomers(@RequestParam String restAgentEmail, int page) {
-        return custService.getAllCustomer(restAgentEmail, page);
+    public ResponseEntity<?> getAllCustomers(int page,
+                                             @RequestHeader("userEmail") String userEmail,
+                                             @RequestHeader("userRole") String userRole) {
+        return custService.getAllCustomer(userEmail, page);
     }
 
 //    @PutMapping("/updateAdmin")
@@ -47,13 +49,16 @@ public class CustomerController {
 //        return restAgentService.updateAdmin(adminRequest);
 //    }
 
-    @DeleteMapping("/{customerId}")
-    public ResponseEntity<BaseResponse<?>> deleteCustomer(@PathVariable int customerId) {
-        return custService.deleteCustomer(customerId);
+    @DeleteMapping("/delete/customer")
+    @PreAuthorize("#userRole == 'CUSTOMER'")
+    public ResponseEntity<BaseResponse<?>> deleteCustomer(@RequestHeader("userEmail") String userEmail,
+                                                          @RequestHeader("userRole") String userRole) {
+        return custService.deleteCustomer(userEmail);
     }
 
-    @GetMapping(value = "/isValidCustomer")
-    public ResponseEntity<?> getIsValidCustomer(@RequestParam String custEmail) {
-        return custService.isValidCustomerEmail(custEmail);
-    }
+//    @GetMapping(value = "/customer/isValidCustomer")
+////    @PreAuthorize("hasRole('CUSTOMER')")
+//    public ResponseEntity<?> getIsValidCustomer(@RequestParam String custEmail) {
+//        return custService.isValidCustomerEmail(custEmail);
+//    }
 }

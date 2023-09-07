@@ -1,5 +1,6 @@
 package com.example.food.delivery.Controller;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreFilter;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,7 +40,7 @@ public class TestController {
     }
 
     @GetMapping("/customer")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasAuthority('CUSTOMER')")
     public String customerAccess() {
         return "Customer Board.";
     }

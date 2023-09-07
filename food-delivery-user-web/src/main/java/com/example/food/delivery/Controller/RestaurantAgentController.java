@@ -8,47 +8,57 @@ import com.example.food.delivery.ServiceInterface.RestaurantAgentService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/restaurantAgent")
+//@RequestMapping("/restaurantAgent")
 public class RestaurantAgentController {
     @Autowired
     private RestaurantAgentService restAgentService;
 
-    @PostMapping(value = "/createRestAgent")
+    @PostMapping(value = "/auth/restAgent/signup")
     public ResponseEntity<BaseResponse<?>> createRestAgent(@Valid @RequestBody RestaurantAgentRequest restAgentRequest){
         return restAgentService.createRestAgent(restAgentRequest);
     }
 
-    @PutMapping("/restAgentLogin")
+    @PostMapping("/auth/restAgent/login")
     public ResponseEntity<BaseResponse<?>> loginRestAgent(@Valid @RequestBody LoginRequest loginRequest) {
         return restAgentService.loginRestAgent(loginRequest);
     }
 
-    @PutMapping("/restAgentLogout")
-    public ResponseEntity<BaseResponse<?>> logoutRestAgent(@RequestParam String restAgentEmail) {
+    @PutMapping("/restAgent/logout")
+    @PreAuthorize("#userRole == 'RESTAURANT_AGENT'")
+    public ResponseEntity<BaseResponse<?>> logoutRestAgent(@RequestParam String restAgentEmail,
+                                                           @RequestHeader("userEmail") String userEmail,
+                                                           @RequestHeader("userRole") String userRole) {
         return restAgentService.logoutRestAgent(restAgentEmail);
     }
 
-    @GetMapping("/isRestAgentLoggedIn")
-    public ResponseEntity<BaseResponse<?>> isRestAgentLoggedIn(@RequestParam String restAgentEmail) {
-        return restAgentService.isRestAgentLoggedIn(restAgentEmail);
-    }
+//    @GetMapping("/isRestAgentLoggedIn")
+//    public ResponseEntity<BaseResponse<?>> isRestAgentLoggedIn(@RequestParam String restAgentEmail) {
+//        return restAgentService.isRestAgentLoggedIn(restAgentEmail);
+//    }
 
     @GetMapping(value = "/getRestAgents")
-    public ResponseEntity<?> getAllRestAgents(@RequestParam String restAgentEmail, int page) {
-        return restAgentService.getAllRestAgents(restAgentEmail, page);
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
+    public ResponseEntity<?> getAllRestAgents(@RequestParam int page,
+                                              @RequestHeader("userEmail") String userEmail,
+                                              @RequestHeader("userRole") String userRole) {
+        return restAgentService.getAllRestAgents(page);
     }
 
-    @GetMapping(value = "/isValidRestAgent")
-    public ResponseEntity<?> isValidRestAgent(@RequestParam String restAgentEmail) {
-        return restAgentService.isValidRestAgent(restAgentEmail);
-    }
+//    @GetMapping(value = "/isValidRestAgent")
+//    public ResponseEntity<?> isValidRestAgent(@RequestParam String restAgentEmail) {
+//        return restAgentService.isValidRestAgent(restAgentEmail);
+//    }
 
-    @PutMapping(value = "/approveDelAgent")
-    public ResponseEntity<?> approveDeliveryAgent(@RequestBody RequestRestAgent requestRestAgent) {
-        return restAgentService.approveDeliveryAgent(requestRestAgent);
+    @PutMapping(value = "/approve/delAgent")
+    @PreAuthorize("#userRole == 'RESTAURANT_AGENT'")
+    public ResponseEntity<?> approveDeliveryAgent(@RequestParam String delAgentEmail,
+                                                  @RequestHeader("userEmail") String userEmail,
+                                                  @RequestHeader("userRole") String userRole) {
+        return restAgentService.approveDeliveryAgent(delAgentEmail, userEmail);
     }
 
 //    @PutMapping("/updateAdmin")
@@ -56,8 +66,10 @@ public class RestaurantAgentController {
 //        return restAgentService.updateAdmin(adminRequest);
 //    }
 
-    @DeleteMapping("/{restAgentId}")
-    public ResponseEntity<BaseResponse<?>> deleteRestAgent(@PathVariable int restAgentId) {
-        return restAgentService.deleteRestAgent(restAgentId);
+    @DeleteMapping("/delete/restAgent")
+    @PreAuthorize("#userRole == 'RESTAURANT_AGENT'")
+    public ResponseEntity<BaseResponse<?>> deleteRestAgent(@RequestHeader("userEmail") String userEmail,
+                                                           @RequestHeader("userRole") String userRole) {
+        return restAgentService.deleteRestAgent(userEmail);
     }
 }

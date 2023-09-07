@@ -15,12 +15,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateAdminRequest {
-    @Positive(message = "Admin ID should be greater than zero")
-    @NotNull(message = "Admin Field should not be null")
-    private Integer adminId;
-
     private String adminName;
 
-    private String adminEmail;
+    private String phoneNo;
 
 }

@@ -33,11 +33,8 @@ public class Customer {
     private String custPassword;
 
     @NotBlank(message = "Customer phone cannot be blank")
-    @Pattern(regexp = "\\d{10,15}", message = "Invalid phone number")
+    @Pattern(regexp = "\\d{10}", message = "Phone number should contain only number and it should be 10 digits")
     @Column(name = EntityConstants.CUSTOMER_PHONE)
     private String custPhone;
-
-    @Column(name = EntityConstants.IS_LOGGED_IN)
-    private Boolean isLoggedIn;
 
 }

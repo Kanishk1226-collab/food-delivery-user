@@ -7,6 +7,7 @@ public class EntityConstants {
     public static final String ADMIN_NAME = "admin_name";
     public static final String ADMIN_EMAIL = "admin_email";
     public static final String ADMIN_ROLE = "admin_role";
+    public static final String ADMIN_PHONE_NO = "phone_no";
     public static final String ADMIN_PASSWORD = "admin_password";
 
     //RESTAURANT AGENT TABLE AND COLUMNS
@@ -26,8 +27,8 @@ public class EntityConstants {
     public static final String DELIVERY_AGENT_PASSWORD = "del_agent_password";
     public static final String DELIVERY_AGENT_PHONE = "del_agent_phone";
     public static final String DELIVERY_AGENT_IS_VERIFIED = "is_verified";
-    public static final String DELIVERY_AGENT_IS_AVAILABLE = "is_available";
-
+    public static final String DELIVERY_AGENT_STATUS = "status";
+    public static final String DELIVERY_COUNT = "deivery_count";
 
     //CUSTOMER TABLE AND COLUMNS
     public static final String CUSTOMER_TABLE_NAME = "customer";
@@ -36,7 +37,6 @@ public class EntityConstants {
     public static final String CUSTOMER_EMAIL = "customer_email";
     public static final String CUSTOMER_PASSWORD = "customer_password";
     public static final String CUSTOMER_PHONE = "customer_phone";
-
 
     //CUSTOMER ADDRESS TABLE AND COLUMNS
     public static final String ADDRESS_TABLE_NAME = "address";

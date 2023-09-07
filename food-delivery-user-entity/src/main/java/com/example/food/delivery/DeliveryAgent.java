@@ -1,5 +1,8 @@
 package com.example.food.delivery;
 
+import com.example.food.delivery.Request.AdminRole;
+import com.example.food.delivery.Request.DelAgentStatus;
+import com.example.food.delivery.Validator.EnumNamePattern;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -35,16 +38,18 @@ public class DeliveryAgent {
     private String restAgentEmail;
 
     @NotBlank(message = "Delivery Agent phone cannot be blank")
-    @Pattern(regexp = "\\d{10,15}", message = "Invalid phone number")
+    @Pattern(regexp = "\\d{10}", message = "Phone number should contain only number and it should be 10 digits")
     @Column(name = EntityConstants.DELIVERY_AGENT_PHONE)
     private String delAgentPhone;
 
     @Column(name = EntityConstants.DELIVERY_AGENT_IS_VERIFIED)
     private Boolean isVerified;
 
-    @Column(name = EntityConstants.DELIVERY_AGENT_IS_AVAILABLE)
-    private Boolean isAvailable;
+    @Column(name = EntityConstants.DELIVERY_AGENT_STATUS)
+    private DelAgentStatus status;
 
-    @Column(name = EntityConstants.IS_LOGGED_IN)
-    private Boolean isLoggedIn;
+    @Column(name = EntityConstants.DELIVERY_COUNT)
+    private int deliveryCount;
+
+
 }

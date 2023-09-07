@@ -8,12 +8,10 @@ import org.springframework.http.ResponseEntity;
 
 public interface AdminService {
     ResponseEntity<BaseResponse<?>> createAdmin(AdminRequest adminRequest, String adminEmail);
-    ResponseEntity<BaseResponse<?>> loginAdmin(LoginRequest loginRequest);
+    ResponseEntity<?> loginAdmin(LoginRequest loginRequest);
     ResponseEntity<BaseResponse<?>> logoutAdmin(String adminEmail);
-    ResponseEntity<BaseResponse<?>> isAdminLoggedIn(String adminEmail);
+    ResponseEntity<BaseResponse<?>> updateAdmin(UpdateAdminRequest updateAdminRequest, String adminEmail);
     ResponseEntity<BaseResponse<?>> getAllAdmins(int page, String email);
-    ResponseEntity<BaseResponse<?>> updateAdmin(UpdateAdminRequest updateAdminRequest);
-    ResponseEntity<BaseResponse<?>> deleteAdmin(int adminId, String adminEmail);
+    ResponseEntity<BaseResponse<?>> deleteAdmin(String adminEmail, String userEmail);
     ResponseEntity<BaseResponse<?>> transferRoleAndDeleteSuperAdmin(String currentAdminEmail, String newSuperAdminEmail);
-    ResponseEntity<?> isValidAdmin(String adminEmail);
 }

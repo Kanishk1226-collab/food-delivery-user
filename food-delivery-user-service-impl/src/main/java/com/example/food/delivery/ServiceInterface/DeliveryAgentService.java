@@ -10,11 +10,10 @@ public interface DeliveryAgentService {
     ResponseEntity<BaseResponse<?>> createDeliveryAgent(DeliveryAgentRequest delAgentRequest);
     ResponseEntity<BaseResponse<?>> loginDelAgent(LoginRequest loginRequest);
     ResponseEntity<BaseResponse<?>> logoutDelAgent(String delAgentEmail);
-    ResponseEntity<BaseResponse<?>> setDelAgentAvailability(String delAgentEmail);
-    ResponseEntity<BaseResponse<?>> isDelAgentLoggedIn(String delAgentEmail);
+    ResponseEntity<BaseResponse<?>> setDelAgentAvailability(String delAgentEmail, String status);
     ResponseEntity<?> getAllDeliveryAgents();
-    ResponseEntity<BaseResponse<?>> deleteDeliveryAgent(int delAgentId);
-    ResponseEntity<BaseResponse<?>> deliveryRequest(RequestRestAgent requestRestAgent);
+    ResponseEntity<BaseResponse<?>> deleteDeliveryAgent(String delAgentEmail);
+    ResponseEntity<BaseResponse<?>> deliveryRequest(String delAgentEmail, String restAgentEmail);
     ResponseEntity<BaseResponse<?>> assignDeliveryAgent(String restAgentEmail);
     ResponseEntity<BaseResponse<?>> checkDeliveryAgentAvailability(String restAgentEmail);
 }

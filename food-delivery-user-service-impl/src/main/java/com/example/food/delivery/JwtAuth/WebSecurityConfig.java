@@ -1,6 +1,6 @@
 package com.example.food.delivery.JwtAuth;
-import com.example.food.delivery.Admin;
-import com.example.food.delivery.AdminServiceImpl;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,8 +23,9 @@ import javax.sql.DataSource;
 
 
 @Configuration
-@EnableMethodSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity
+@RequiredArgsConstructor
 // (securedEnabled = true,
 // jsr250Enabled = true,
 // prePostEnabled = true)
@@ -69,19 +71,19 @@ private UserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable())
+        http.csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/api/auth/**", "/swagger-resources/**","/swagger-ui/**","/v3/api-docs/**").permitAll()
-                                .requestMatchers("/api/test/**").permitAll()
-                                .anyRequest().authenticated()
+//                .authorizeHttpRequests(auth -> auth.requestMatchers("/error","/customer/**", "/auth/**", "/swagger-resources/**","/swagger-ui/**","/v3/api-docs/**").permitAll()
+//                        .requestMatchers("/api/test/**").permitAll()
+//                        .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/**").permitAll()
+                        .requestMatchers("/api/test/**").permitAll()
+                        .anyRequest().authenticated()
                 );
-
-        http.authenticationProvider(authenticationProvider());
-
-        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
-
+//        http.authenticationProvider(authenticationProvider());
+//        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+
 }

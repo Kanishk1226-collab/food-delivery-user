@@ -10,62 +10,79 @@ import com.example.food.delivery.ServiceInterface.AdminService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreFilter;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/admins")
+//@RequestMapping("/admins")
 public class AdminController {
 
     @Autowired
     private AdminService adminService;
 
-    @PostMapping(value = "/createAdmin")
-    public ResponseEntity<BaseResponse<?>> createAdmin(@Valid @RequestBody AdminRequest adminRequest, @RequestParam String requesterEmail){
-            return adminService.createAdmin(adminRequest, requesterEmail);
+    @PostMapping(value = "/admin/signup")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN'")
+    public ResponseEntity<BaseResponse<?>> createAdmin(@Valid @RequestBody AdminRequest adminRequest,
+                                                       @RequestHeader("userEmail") String userEmail,
+                                                       @RequestHeader("userRole") String userRole){
+            return adminService.createAdmin(adminRequest, userEmail);
     }
 
-    @PutMapping("/adminLogin")
-    public ResponseEntity<BaseResponse<?>> loginAdmin(@Valid @RequestBody LoginRequest loginRequest) {
+    @PostMapping("/auth/admin/login")
+    public ResponseEntity<?> loginAdmin(@Valid @RequestBody LoginRequest loginRequest) {
         return adminService.loginAdmin(loginRequest);
     }
 
-    @PutMapping("/adminLogout")
-    public ResponseEntity<BaseResponse<?>> logoutAdmin(@RequestParam String adminEmail) {
-        return adminService.logoutAdmin(adminEmail);
+    @PutMapping("/admin/logout")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
+    public ResponseEntity<BaseResponse<?>> logoutAdmin(@RequestHeader("userEmail") String userEmail,
+                                                       @RequestHeader("userRole") String userRole) {
+        return adminService.logoutAdmin(userEmail);
     }
 
-    @GetMapping("/isAdminLoggedIn")
-    public ResponseEntity<BaseResponse<?>> isAdminLoggedIn(@RequestParam String adminEmail) {
-        return adminService.isAdminLoggedIn(adminEmail);
+//    @GetMapping("/isAdminLoggedIn")
+//    public ResponseEntity<BaseResponse<?>> isAdminLoggedIn(@RequestParam String adminEmail) {
+//        return adminService.isAdminLoggedIn(adminEmail);
+//    }
+
+    @GetMapping(value = "/admin/all")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN'")
+    public ResponseEntity<BaseResponse<?>> getAllAdmins(@RequestParam int page,
+                                                        @RequestHeader("userEmail") String userEmail,
+                                                        @RequestHeader("userRole") String userRole) {
+        return adminService.getAllAdmins(page, userEmail);
     }
 
-    @GetMapping(value = "/getAdmins")
-    public ResponseEntity<BaseResponse<?>> getAllAdmins(@RequestParam int page, String email) {
-        return adminService.getAllAdmins(page, email);
+    @PutMapping("/admin/update")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
+    public ResponseEntity<BaseResponse<?>> updateAdmin(@RequestBody UpdateAdminRequest adminRequest,
+                                                       @RequestHeader("userEmail") String userEmail,
+                                                       @RequestHeader("userRole") String userRole) {
+        return adminService.updateAdmin(adminRequest, userEmail);
     }
 
-    @PutMapping("/updateAdmin")
-    public ResponseEntity<BaseResponse<?>> updateAdmin(@Valid @RequestBody UpdateAdminRequest adminRequest) {
-        return adminService.updateAdmin(adminRequest);
+    @DeleteMapping("/admin/delete")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN'")
+    public ResponseEntity<BaseResponse<?>> deleteAdmin(@RequestParam String adminEmail,
+                                                       @RequestHeader("userEmail") String userEmail,
+                                                       @RequestHeader("userRole") String userRole) {
+        return adminService.deleteAdmin(adminEmail, userEmail);
     }
 
-    @DeleteMapping("/{adminId}")
-    public ResponseEntity<BaseResponse<?>> deleteAdmin(@PathVariable int adminId, @RequestParam String requesterEmail) {
-        return adminService.deleteAdmin(adminId, requesterEmail);
-    }
-
-    @PostMapping("/transfer-super-admin")
+    @PutMapping("/transfer-super-admin")
+    @PreAuthorize("#userRole == 'SUPER_ADMIN'")
     public ResponseEntity<BaseResponse<?>> transferSuperAdminRole(
             @RequestParam String newSuperAdminEmail,
-            @RequestParam String currentAdminEmail) {
-        return adminService.transferRoleAndDeleteSuperAdmin(currentAdminEmail, newSuperAdminEmail);
+            @RequestHeader("userEmail") String userEmail, @RequestHeader("userRole") String userRole) {
+        return adminService.transferRoleAndDeleteSuperAdmin(userEmail, newSuperAdminEmail);
     }
 
-    @GetMapping(value = "/isValidAdmin")
-    public ResponseEntity<?> isValidAdmin(@RequestParam String adminEmail) {
-        return adminService.isValidAdmin(adminEmail);
-    }
+//    @GetMapping(value = "/isValidAdmin")
+//    public ResponseEntity<?> isValidAdmin(@RequestParam String adminEmail) {
+//        return adminService.isValidAdmin(adminEmail);
+//    }
 
 }

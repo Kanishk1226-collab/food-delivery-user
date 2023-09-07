@@ -1,17 +1,21 @@
 package com.example.food.delivery;
 
-import com.example.food.delivery.Request.DeliveryAgentRequest;
-import com.example.food.delivery.Request.LoginRequest;
-import com.example.food.delivery.Request.RequestRestAgent;
-import com.example.food.delivery.Request.RestaurantAgentRequest;
-import com.example.food.delivery.Response.BaseResponse;
-import com.example.food.delivery.Response.DeliveryAgentResponse;
-import com.example.food.delivery.Response.ResponseStatus;
+import com.example.food.delivery.JwtAuth.JwtUtils;
+import com.example.food.delivery.Request.*;
+import com.example.food.delivery.Response.*;
 import com.example.food.delivery.ServiceInterface.DeliveryAgentService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.EnumUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -30,21 +34,38 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtUtils jwtUtil;
+
+    @Autowired
+    private ObjectMapper mapper;
+
+    @Autowired
+    private UserDetailsServiceImpl userDetailServiceImpl;
+
     public synchronized ResponseEntity<BaseResponse<?>> createDeliveryAgent(DeliveryAgentRequest delAgentRequest) {
         try{
             if (delAgentRepository.existsByDelAgentEmail(delAgentRequest.getDelAgentEmail())) {
                 throw new UserManagementExceptions.UserAlreadyExistsException("User with this email already exists");
             }
+            if(delAgentRepository.existsByDelAgentPhone(delAgentRequest.getDelAgentPhone())) {
+                throw new UserManagementExceptions.UserAlreadyExistsException("User with this phone no. already exists");
+            }
             DeliveryAgent deliveryAgent = new DeliveryAgent();
+            BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
             deliveryAgent.setDelAgentName(delAgentRequest.getDelAgentName());
             deliveryAgent.setDelAgentEmail(delAgentRequest.getDelAgentEmail());
-            deliveryAgent.setDelAgentPassword(delAgentRequest.getDelAgentPassword());
+            deliveryAgent.setDelAgentPassword(bCryptPasswordEncoder.encode(delAgentRequest.getDelAgentPassword()));
             deliveryAgent.setDelAgentPhone(delAgentRequest.getDelAgentPhone());
             deliveryAgent.setRestAgentEmail(null);
             deliveryAgent.setIsVerified(false);
-            deliveryAgent.setIsAvailable(false);
-            deliveryAgent.setIsLoggedIn(false);
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null,  delAgentRepository.save(deliveryAgent));
+            deliveryAgent.setStatus(null);
+            deliveryAgent.setDeliveryCount(0);
+            delAgentRepository.save(deliveryAgent);
+            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null,  "Account created Successfully");
         }
         catch (Exception e)
         {
@@ -56,22 +77,29 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
     public synchronized ResponseEntity<BaseResponse<?>> loginDelAgent(LoginRequest loginRequest) {
         try {
             String email = loginRequest.getEmail();
-            String password = loginRequest.getPassword();
             DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(email);
-
             if (delAgent == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + email);
+                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found with ID " + email);
             }
+            UserCredentials userCredentials = new UserCredentials();
+            userCredentials.setEmail(email);
+            userCredentials.setRole("DELIVERY_AGENT");
+            Authentication authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(mapper.writeValueAsString(userCredentials), loginRequest.getPassword()));
 
-            if (delAgent.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("Delivery Agent already logged in");
-            }
-            if (!delAgent.getDelAgentPassword().equals(password)) {
-                throw new UserManagementExceptions.LoginException("Invalid Password");
-            }
-            delAgent.setIsLoggedIn(true);
-            delAgentRepository.save(delAgent);
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Login Successful");
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            ObjectMapper objectMapper = new ObjectMapper();
+            String serializedCredentials = objectMapper.writeValueAsString(userCredentials);
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            UserDetails userDetails = userDetailServiceImpl.loadUserByUsername(serializedCredentials);
+            String jwt = jwtUtil.generateJwtToken(userDetails);
+            JwtResponse jwtResponse = JwtResponse.builder()
+                    .token(jwt)
+                    .username(delAgent.getDelAgentName())
+                    .email(delAgent.getDelAgentEmail())
+                    .role("DELIVERY_AGENT").build();
+            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, jwtResponse);
         } catch(Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
         }
@@ -80,17 +108,11 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
 
     public synchronized ResponseEntity<BaseResponse<?>> logoutDelAgent(String delAgentEmail) {
         try {
-            if(!isValidEmail(delAgentEmail)) {
-                throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
-            }
             DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-            if (delAgent == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
-            }
-            if (!delAgent.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-            }
-            delAgent.setIsLoggedIn(false);
+//            if (!delAgent.getIsLoggedIn()) {
+//                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
+//            }
+//            delAgent.setIsLoggedIn(false);
             delAgentRepository.save(delAgent);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Logout Successful");
         } catch(Exception e) {
@@ -99,13 +121,26 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> setDelAgentAvailability(String delAgentEmail) {
+    public synchronized ResponseEntity<BaseResponse<?>> setDelAgentAvailability(String delAgentEmail, String status) {
         try {
-            isValidDelAgent(delAgentEmail);
+            String delAgentstatus = status.toUpperCase();
+            String responseMessage = "Availability status changed";
+            if(!EnumUtils.isValidEnum(DelAgentStatus.class, delAgentstatus)) {
+                throw new UserManagementExceptions.InvalidInputException("Status should be either AVAILABLE or NOT_AVAILABLE");
+            }
+//            isValidDelAgent(delAgentEmail);
             DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-            delAgent.setIsAvailable(true);
+            if(!delAgent.getIsVerified()) {
+                throw new UserManagementExceptions.UnauthorizedAccessException("You need to get verified by Restaurant Agent in order change status.");
+            }
+            if(delAgent.getStatus() == DelAgentStatus.ON_DELIVERY) {
+                throw new UserManagementExceptions.UnauthorizedAccessException("You can't change your status while you're in ON_DELIVERY");
+            }
+            delAgent.setStatus(DelAgentStatus.valueOf(delAgentstatus));
             delAgentRepository.save(delAgent);
-            setRestAvailability(delAgent.getRestAgentEmail(), true);
+            if(delAgentstatus.equals("NOT_AVAILABLE")) {
+                setRestAvailability(delAgent.getRestAgentEmail(), "NOT_AVAILABLE");
+            }
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Availability status changed");
         } catch(Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
@@ -113,50 +148,47 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
         return ResponseEntity.ok(response);
     }
 
-    public void isValidDelAgent(String delAgentEmail) {
-        if(!isValidEmail(delAgentEmail)) {
-            throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
-        }
-        DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-        if (delAgent == null) {
-            throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
-        }
-        if (!delAgent.getIsLoggedIn()) {
-            throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-        }
-    }
+//    public void isValidDelAgent(String delAgentEmail) {
+//        if(!isValidEmail(delAgentEmail)) {
+//            throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
+//        }
+//        DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
+//        if (delAgent == null) {
+//            throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
+//        }
+////        if (!delAgent.getIsLoggedIn()) {
+////            throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
+////        }
+//    }
 
-    public synchronized ResponseEntity<BaseResponse<?>> isDelAgentLoggedIn(String delAgentEmail) {
-        try {
-            if(!isValidEmail(delAgentEmail)) {
-                throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
-            }
-            DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-            if (delAgent == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
-            }
-            if (!delAgent.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-            }
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Delivery Agent has Logged In");
-        } catch(Exception e) {
-            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-        }
-        return ResponseEntity.ok(response);
-    }
+//    public synchronized ResponseEntity<BaseResponse<?>> isDelAgentLoggedIn(String delAgentEmail) {
+//        try {
+//            if(!isValidEmail(delAgentEmail)) {
+//                throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
+//            }
+//            DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
+//            if (delAgent == null) {
+//                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
+//            }
+////            if (!delAgent.getIsLoggedIn()) {
+////                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
+////            }
+//            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Delivery Agent has Logged In");
+//        } catch(Exception e) {
+//            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
+//        }
+//        return ResponseEntity.ok(response);
+//    }
 
     public synchronized ResponseEntity<?> getAllDeliveryAgents() {
         response = new BaseResponse<>(true,ResponseStatus.SUCCESS.getStatus(), null, delAgentRepository.findAll());
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> deleteDeliveryAgent(int delAgentId) {
+    public synchronized ResponseEntity<BaseResponse<?>> deleteDeliveryAgent(String delAgentEmail) {
         try {
-            DeliveryAgent deliveryAgent = delAgentRepository.findById(delAgentId).orElse(null);
-            if (deliveryAgent == null) {
-                throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + delAgentId);
-            }
-            delAgentRepository.deleteById(delAgentId);
+            DeliveryAgent deliveryAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
+            delAgentRepository.deleteById(deliveryAgent.getDelAgentId());
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "User removed Successfully");
         } catch (Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
@@ -164,13 +196,8 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> deliveryRequest(RequestRestAgent requestRestAgent) {
+    public synchronized ResponseEntity<BaseResponse<?>> deliveryRequest(String delAgentEmail, String restAgentEmail) {
         try {
-            String delAgentEmail = requestRestAgent.getDelAgentEmail();
-            String restAgentEmail = requestRestAgent.getRestAgentEmail();
-            if(!isValidEmail(delAgentEmail)) {
-                throw new UserManagementExceptions.InvalidInputException("Enter Valid Delivery Agent Email");
-            }
             if(!isValidEmail(restAgentEmail)) {
                 throw new UserManagementExceptions.InvalidInputException("Enter Valid Restaurant Agent Email");
             }
@@ -179,9 +206,6 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
                 throw new UserManagementExceptions.RestTemplateException(isVerifiedRestaurant.getError());
             }
             DeliveryAgent deliveryAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-            if (deliveryAgent == null) {
-                throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + delAgentEmail);
-            }
             deliveryAgent.setRestAgentEmail(restAgentEmail);
             delAgentRepository.save(deliveryAgent);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Requested for Delivery Agent!");
@@ -200,18 +224,18 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(!isVerifiedRestaurant.isSuccess()) {
                 throw new UserManagementExceptions.RestTemplateException(isVerifiedRestaurant.getError());
             }
-            List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndIsAvailable(restAgentEmail, true);
-            if (deliveryAgent == null || deliveryAgent.isEmpty()) {
+            List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndStatusOrderByDeliveryCountAsc(restAgentEmail, DelAgentStatus.AVAILABLE);
+            if (deliveryAgent == null || deliveryAgent.isEmpty() || deliveryAgent.size() == 0) {
                 throw new UserManagementExceptions.UserNotFoundException("Delivery Agent Not Available");
             }
-            deliveryAgent.get(0).setIsAvailable(false);
+            deliveryAgent.get(0).setStatus(DelAgentStatus.ON_DELIVERY);
             delAgentRepository.saveAll(deliveryAgent);
             DeliveryAgentResponse deliveryAgentResponse = new DeliveryAgentResponse();
             deliveryAgentResponse.setDelAgentName(deliveryAgent.get(0).getDelAgentName());
             deliveryAgentResponse.setDelAgentEmail(deliveryAgent.get(0).getDelAgentEmail());
             deliveryAgentResponse.setDelAgentPhone(deliveryAgent.get(0).getDelAgentPhone());
             if(deliveryAgent.size() == 1) {
-                setRestAvailability(deliveryAgent.get(0).getRestAgentEmail(), false);
+                setRestAvailability(deliveryAgent.get(0).getRestAgentEmail(), "NOT_DELIVERABLE");
             }
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, deliveryAgentResponse);
         } catch (Exception e) {
@@ -220,8 +244,8 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
         return ResponseEntity.ok(response);
     }
 
-    public void setRestAvailability(String restAgentEmail, boolean isAvail) {
-        String url = "http://localhost:8082/restaurant-service/restaurant/setRestaurantAvailability?restAgentEmail=" + restAgentEmail + "&isAvail=" + isAvail;
+    public void setRestAvailability(String restAgentEmail, String status) {
+        String url = "http://localhost:8082/restaurant-service/restaurant/status?restAgentEmail=" + restAgentEmail + "&status=" + status;
         BaseResponse<?> getRestAvail;
         ResponseEntity<BaseResponse<?>> responseEntity3 =
                 restTemplate.exchange(url, HttpMethod.PUT, null,
@@ -239,7 +263,7 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(!isValidEmail(restAgentEmail)) {
                 throw new UserManagementExceptions.InvalidInputException("Enter Valid Restaurant Agent Email");
             }
-            List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndIsAvailable(restAgentEmail, true);
+            List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndStatus(restAgentEmail, DelAgentStatus.AVAILABLE);
             if (deliveryAgent == null || deliveryAgent.isEmpty()) {
                 throw new UserManagementExceptions.UserNotFoundException("Delivery Agent Not Available");
             }

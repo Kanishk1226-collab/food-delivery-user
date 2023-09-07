@@ -10,10 +10,8 @@ public interface RestaurantAgentService {
     ResponseEntity<BaseResponse<?>> createRestAgent(RestaurantAgentRequest restAgentRequest);
     ResponseEntity<BaseResponse<?>> loginRestAgent(LoginRequest loginRequest);
     ResponseEntity<BaseResponse<?>> logoutRestAgent(String restAgentEmail);
-    ResponseEntity<BaseResponse<?>> isRestAgentLoggedIn(String restAgentEmail);
-    ResponseEntity<BaseResponse<?>> getAllRestAgents(String email, int page);
-    ResponseEntity<?> isValidRestAgent(String restAgentEmail);
-    ResponseEntity<BaseResponse<?>> deleteRestAgent(int restAgentId);
-    ResponseEntity<?> approveDeliveryAgent(RequestRestAgent requestRestAgent);
+    ResponseEntity<BaseResponse<?>> getAllRestAgents(int page);
+    ResponseEntity<BaseResponse<?>> deleteRestAgent(String restAgentEmail);
+    ResponseEntity<?> approveDeliveryAgent(String delAgentEmail, String restAgentEmail);
 
 }

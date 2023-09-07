@@ -1,27 +1,41 @@
 package com.example.food.delivery;
 
+import com.example.food.delivery.JwtAuth.JwtUtils;
 import com.example.food.delivery.Request.AdminRequest;
 import com.example.food.delivery.Request.AdminRole;
 import com.example.food.delivery.Request.LoginRequest;
 import com.example.food.delivery.Request.UpdateAdminRequest;
 import com.example.food.delivery.Response.BaseResponse;
+import com.example.food.delivery.Response.JwtResponse;
 import com.example.food.delivery.Response.ResponseStatus;
+import com.example.food.delivery.Response.UserCredentials;
 import com.example.food.delivery.ServiceInterface.AdminService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-public class AdminServiceImpl implements UserDetailsService, AdminService {
+public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private AdminRepository adminRepository;
@@ -29,14 +43,23 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
     @Autowired
     public BaseResponse<?> response;
 
+    @Autowired
+    private ObjectMapper mapper;
+
+    @Autowired
+    private JwtUtils jwtUtil;
+
+    @Autowired
+    AuthenticationManager authenticationManager;
+
+    @Autowired
+    private UserDetailsServiceImpl userDetailServiceImpl;
+
     public synchronized ResponseEntity<BaseResponse<?>> createAdmin(AdminRequest adminRequest, String adminEmail) {
         try {
             Admin requesterAdmin = adminRepository.findByAdminEmail(adminEmail);
             if(requesterAdmin == null) {
                 throw new UserManagementExceptions.InvalidInputException("Enter Valid Email ID");
-            }
-            if (adminRequest.getAdminRole() == AdminRole.SUPER_ADMIN) {
-                    throw new UserManagementExceptions.UnauthorizedAccessException("SUPER_ADMIN cannot be created!");
             }
             if (adminRequest.getAdminRole() == AdminRole.CO_ADMIN && requesterAdmin.getAdminRole() != AdminRole.SUPER_ADMIN) {
                 throw new UserManagementExceptions.UnauthorizedAccessException("CO_ADMIN can be created only by SUPER_ADMIN!");
@@ -46,6 +69,9 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
             }
             if (adminRepository.existsByAdminEmail(adminRequest.getAdminEmail())) {
                 throw new UserManagementExceptions.UserAlreadyExistsException("User with this email already exists");
+            }
+            if(adminRepository.existsByPhoneNo(adminRequest.getPhoneNo())) {
+                throw new UserManagementExceptions.UserAlreadyExistsException("User with this phone number already exists");
             }
             addNewAdmin(adminRequest);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, adminRequest.getAdminRole() + " added successfully");
@@ -57,31 +83,41 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
 
     public void addNewAdmin(AdminRequest adminRequest) {
         Admin admin = new Admin();
+        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
         admin.setAdminName(adminRequest.getAdminName());
         admin.setAdminEmail(adminRequest.getAdminEmail());
         admin.setAdminRole(adminRequest.getAdminRole());
-        admin.setAdminPassword(adminRequest.getAdminName().replaceAll("\\s", "") + "@fda.com");
-        admin.setIsLoggedIn(false);
+        admin.setAdminPassword(bCryptPasswordEncoder.encode(adminRequest.getAdminName().replaceAll("\\s", "") + "@fda.com"));
+        admin.setPhoneNo(adminRequest.getPhoneNo());
         adminRepository.save(admin);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> loginAdmin(LoginRequest loginRequest) {
+    public synchronized ResponseEntity<?> loginAdmin(LoginRequest loginRequest) {
         try {
             String email = loginRequest.getEmail();
-            String password = loginRequest.getPassword();
             Admin admin = adminRepository.findByAdminEmail(email);
             if (admin == null) {
                 throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + email);
             }
-            if (admin.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("User already logged in");
-            }
-            if (!admin.getAdminPassword().equals(password)) {
-                throw new UserManagementExceptions.LoginException("Invalid Password");
-            }
-            admin.setIsLoggedIn(true);
-            adminRepository.save(admin);
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Login Successful");
+            UserCredentials userCredentials = new UserCredentials();
+            userCredentials.setEmail(email);
+            userCredentials.setRole(admin.getAdminRole().toString());
+            Authentication authentication = authenticationManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(mapper.writeValueAsString(userCredentials), loginRequest.getPassword()));
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            String serializedCredentials = objectMapper.writeValueAsString(userCredentials);
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            UserDetails userDetails = userDetailServiceImpl.loadUserByUsername(serializedCredentials);
+            String jwt = jwtUtil.generateJwtToken(userDetails);
+
+            JwtResponse jwtResponse = JwtResponse.builder()
+                    .token(jwt)
+                    .username(admin.getAdminName())
+                    .email(admin.getAdminEmail())
+                    .role(admin.getAdminRole().toString()).build();
+            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, jwtResponse);
         } catch(Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
         }
@@ -90,15 +126,7 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
 
     public synchronized ResponseEntity<BaseResponse<?>> logoutAdmin(String adminEmail) {
         try {
-            isValidEmail(adminEmail);
             Admin admin = adminRepository.findByAdminEmail(adminEmail);
-            if (admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + adminEmail);
-            }
-            if (!admin.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("Admin not logged in");
-            }
-            admin.setIsLoggedIn(false);
             adminRepository.save(admin);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Logout Successful");
         } catch(Exception e) {
@@ -107,26 +135,22 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> isAdminLoggedIn(String adminEmail) {
-        try {
-            isValidEmail(adminEmail);
-            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-            if (admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + adminEmail);
-            }
-            if (!admin.getIsLoggedIn()) {
-                throw new UserManagementExceptions.LoginException("Admin not logged in");
-            }
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Admin has Logged In");
-        } catch(Exception e) {
-            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-        }
-        return ResponseEntity.ok(response);
-    }
+//    public synchronized ResponseEntity<BaseResponse<?>> isAdminLoggedIn(String adminEmail) {
+//        try {
+//            isValidEmail(adminEmail);
+//            Admin admin = adminRepository.findByAdminEmail(adminEmail);
+//            if (admin == null) {
+//                throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + adminEmail);
+//            }
+//            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Admin has Logged In");
+//        } catch(Exception e) {
+//            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
+//        }
+//        return ResponseEntity.ok(response);
+//    }
 
     public synchronized ResponseEntity<BaseResponse<?>> getAllAdmins(int page, String email) {
         try {
-            isSuperOrCoAdmin(email);
             int pageSize = 10;
             Sort sortById = Sort.by(Sort.Direction.DESC, "adminId");
             PageRequest pageRequest = PageRequest.of(page, pageSize, sortById);
@@ -138,47 +162,44 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> updateAdmin(UpdateAdminRequest updateAdminRequest) {
+    public synchronized ResponseEntity<BaseResponse<?>> updateAdmin(UpdateAdminRequest updateAdminRequest, String adminEmail) {
         try {
-            Admin admin = adminRepository.findById(updateAdminRequest.getAdminId()).orElse(null);
-            if (admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + updateAdminRequest.getAdminId());
-            }
+            Admin admin = adminRepository.findByAdminEmail(adminEmail);
             if (updateAdminRequest.getAdminName() != null) {
-                if (updateAdminRequest.getAdminName().isEmpty()) {
+                if (updateAdminRequest.getAdminName().trim().isEmpty()) {
                     throw new UserManagementExceptions.InvalidInputException("User Name should not be empty");
                 }
                 admin.setAdminName(updateAdminRequest.getAdminName());
             }
-            if (updateAdminRequest.getAdminEmail() != null) {
-                if (updateAdminRequest.getAdminEmail().isEmpty()) {
-                    throw new UserManagementExceptions.InvalidInputException("User Email should not be empty");
+            if (updateAdminRequest.getPhoneNo() != null) {
+                if (!Pattern.matches("\\d{10}", updateAdminRequest.getPhoneNo())) {
+                    throw new UserManagementExceptions.InvalidInputException("Phone number should contain only number and it should be 10 digits");
                 }
-                isValidEmail(updateAdminRequest.getAdminEmail());
-                if (adminRepository.existsByAdminEmail(updateAdminRequest.getAdminEmail())) {
+                if (adminRepository.existsByPhoneNo(updateAdminRequest.getPhoneNo())) {
                     throw new UserManagementExceptions.UserAlreadyExistsException("User with this email already exists");
                 }
-                admin.setAdminEmail(updateAdminRequest.getAdminEmail());
+                admin.setAdminEmail(updateAdminRequest.getPhoneNo());
             }
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, adminRepository.save(admin));
+            adminRepository.save(admin);
+            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Admin detail saved successfully!");
         } catch (Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
         }
         return ResponseEntity.ok(response);
     }
 
-    public synchronized ResponseEntity<BaseResponse<?>> deleteAdmin(int adminId, String adminEmail) {
+    public synchronized ResponseEntity<BaseResponse<?>> deleteAdmin(String adminEmail, String userEmail) {
         try {
-            Admin requesterAdmin = adminRepository.findByAdminEmail(adminEmail);
-            if(requesterAdmin == null) {
-                throw new UserManagementExceptions.InvalidInputException("User not found");
-            }
-            if(requesterAdmin.getAdminRole() == AdminRole.ADMIN) {
-                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER_ADMIN and CO_ADMIN have access to delete.");
-            }
-            Admin admin = adminRepository.findById(adminId).orElse(null);
+            Admin requesterAdmin = adminRepository.findByAdminEmail(userEmail);
+//            if(requesterAdmin == null) {
+//                throw new UserManagementExceptions.InvalidInputException("User not found");
+//            }
+//            if(requesterAdmin.getAdminRole() == AdminRole.ADMIN) {
+//                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER_ADMIN and CO_ADMIN have access to delete.");
+//            }
+            Admin admin = adminRepository.findByAdminEmail(adminEmail);
             if (admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + adminId);
+                throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + adminEmail);
             }
             if(admin.getAdminRole() == AdminRole.SUPER_ADMIN) {
                 throw new UserManagementExceptions.UnauthorizedAccessException("SUPER_ADMIN cannot be deleted");
@@ -186,7 +207,7 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
             if(admin.getAdminRole() == AdminRole.CO_ADMIN && requesterAdmin.getAdminRole() != AdminRole.SUPER_ADMIN) {
                 throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER_ADMIN can be delete CO-ADMIN");
             }
-            adminRepository.deleteById(adminId);
+            adminRepository.deleteById(admin.getAdminId());
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "User removed Successfully");
         } catch (Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
@@ -234,28 +255,28 @@ public class AdminServiceImpl implements UserDetailsService, AdminService {
         return ResponseEntity.ok(response);
     }
 
-    public synchronized void isSuperOrCoAdmin(String adminEmail) {
-            isValidEmail(adminEmail);
-            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-            if(admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No user found");
-            }
-            if(admin.getAdminRole().equals(AdminRole.ADMIN)) {
-                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER ADMIN and CO ADMIN can view Admins");
-            }
-            if(!admin.getIsLoggedIn()) {
-                throw new UserManagementExceptions.UnauthorizedAccessException("Admin Not Logged In");
-            }
-        }
+//    public synchronized void isSuperOrCoAdmin(String adminEmail) {
+//            isValidEmail(adminEmail);
+//            Admin admin = adminRepository.findByAdminEmail(adminEmail);
+//            if(admin == null) {
+//                throw new UserManagementExceptions.UserNotFoundException("No user found");
+//            }
+//            if(admin.getAdminRole().equals(AdminRole.ADMIN)) {
+//                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER ADMIN and CO ADMIN can view Admins");
+//            }
+//            if(!admin.getIsLoggedIn()) {
+//                throw new UserManagementExceptions.UnauthorizedAccessException("Admin Not Logged In");
+//            }
+//        }
 
-    @Transactional
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Admin admin = adminRepository.findByAdminName(username);
-                if(admin == null) {
-                    throw new UsernameNotFoundException("User Not Found with username: " + username);
-                }
-        return UserDetailsImpl.build(admin);
-    }
+//    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+//        Admin admin = adminRepository.findByAdminEmail(email);
+//        if (admin == null) {
+//            throw new UsernameNotFoundException("User Not Found with email: " + email);
+//        }
+//        return new User(admin.getAdminEmail(), admin.getAdminPassword(), Arrays.stream(admin.getAdminRole().toString().split(",")).map(SimpleGrantedAuthority::new).toList());
+//    }
+
     public boolean isValidInteger(String input) {
         try {
             Integer.parseInt(input);

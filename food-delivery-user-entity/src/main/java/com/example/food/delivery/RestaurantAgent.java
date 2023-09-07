@@ -1,6 +1,5 @@
 package com.example.food.delivery;
 
-import com.example.food.delivery.Request.AdminRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -20,10 +19,6 @@ public class RestaurantAgent {
     @Column(name = EntityConstants.REST_AGENT_ID)
     private int restAgentId;
 
-    @NotNull(message = "Restaurant Id is required")
-    @Column(name = EntityConstants.REST_ID)
-    private Integer restId;
-
     @NotBlank(message = "Restaurant Agent name cannot be blank")
     @Column(name = EntityConstants.REST_AGENT_NAME)
     private String restAgentName;
@@ -38,10 +33,7 @@ public class RestaurantAgent {
     private String restAgentPassword;
 
     @NotBlank(message = "Restaurant Agent phone cannot be blank")
-    @Pattern(regexp = "\\d{10,15}", message = "Invalid phone number")
+    @Pattern(regexp = "\\d{10}", message = "Phone number should contain only number and it should be 10 digits")
     @Column(name = EntityConstants.REST_AGENT_PHONE)
     private String restAgentPhone;
-
-    @Column(name = EntityConstants.IS_LOGGED_IN)
-    private Boolean isLoggedIn;
 }
