@@ -135,20 +135,6 @@ public class AdminServiceImpl implements AdminService {
         return ResponseEntity.ok(response);
     }
 
-//    public synchronized ResponseEntity<BaseResponse<?>> isAdminLoggedIn(String adminEmail) {
-//        try {
-//            isValidEmail(adminEmail);
-//            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-//            if (admin == null) {
-//                throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + adminEmail);
-//            }
-//            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Admin has Logged In");
-//        } catch(Exception e) {
-//            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-//        }
-//        return ResponseEntity.ok(response);
-//    }
-
     public synchronized ResponseEntity<BaseResponse<?>> getAllAdmins(int page, String email) {
         try {
             int pageSize = 10;
@@ -191,12 +177,6 @@ public class AdminServiceImpl implements AdminService {
     public synchronized ResponseEntity<BaseResponse<?>> deleteAdmin(String adminEmail, String userEmail) {
         try {
             Admin requesterAdmin = adminRepository.findByAdminEmail(userEmail);
-//            if(requesterAdmin == null) {
-//                throw new UserManagementExceptions.InvalidInputException("User not found");
-//            }
-//            if(requesterAdmin.getAdminRole() == AdminRole.ADMIN) {
-//                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER_ADMIN and CO_ADMIN have access to delete.");
-//            }
             Admin admin = adminRepository.findByAdminEmail(adminEmail);
             if (admin == null) {
                 throw new UserManagementExceptions.UserNotFoundException("User not found with ID " + adminEmail);
@@ -240,61 +220,5 @@ public class AdminServiceImpl implements AdminService {
         }
         return ResponseEntity.ok(response);
     }
-
-    public synchronized ResponseEntity<?> isValidAdmin(String adminEmail) {
-        try {
-            isValidEmail(adminEmail);
-            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-            if(admin == null) {
-                throw new UserManagementExceptions.UserNotFoundException("No user found");
-            }
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Valid Admin");
-        } catch(Exception e) {
-            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-        }
-        return ResponseEntity.ok(response);
-    }
-
-//    public synchronized void isSuperOrCoAdmin(String adminEmail) {
-//            isValidEmail(adminEmail);
-//            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-//            if(admin == null) {
-//                throw new UserManagementExceptions.UserNotFoundException("No user found");
-//            }
-//            if(admin.getAdminRole().equals(AdminRole.ADMIN)) {
-//                throw new UserManagementExceptions.UnauthorizedAccessException("Only SUPER ADMIN and CO ADMIN can view Admins");
-//            }
-//            if(!admin.getIsLoggedIn()) {
-//                throw new UserManagementExceptions.UnauthorizedAccessException("Admin Not Logged In");
-//            }
-//        }
-
-//    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-//        Admin admin = adminRepository.findByAdminEmail(email);
-//        if (admin == null) {
-//            throw new UsernameNotFoundException("User Not Found with email: " + email);
-//        }
-//        return new User(admin.getAdminEmail(), admin.getAdminPassword(), Arrays.stream(admin.getAdminRole().toString().split(",")).map(SimpleGrantedAuthority::new).toList());
-//    }
-
-    public boolean isValidInteger(String input) {
-        try {
-            Integer.parseInt(input);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public void isValidEmail(String email) {
-        String regex = "^(.+)@(.+)$";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(email);
-        if(!matcher.matches()) {
-            throw new UserManagementExceptions.InvalidInputException("Enter valid Email");
-        }
-
-    }
-
 
 }

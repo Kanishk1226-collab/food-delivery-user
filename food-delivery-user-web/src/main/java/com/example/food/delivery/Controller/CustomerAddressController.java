@@ -12,12 +12,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-//@RequestMapping("/customerAddress")
+@RequestMapping("/address")
 public class CustomerAddressController {
     @Autowired
     private CustomerAddressServiceImpl custAddressService;
 
-    @PostMapping(value = "/add/address")
+    @PostMapping(value = "/create")
     @PreAuthorize("#userRole == 'CUSTOMER'")
     public ResponseEntity<BaseResponse<?>> createCustAddress(@Valid @RequestBody CustomerAddressRequest custAddressRequest,
                                                              @RequestHeader("userEmail") String userEmail,
@@ -25,33 +25,27 @@ public class CustomerAddressController {
         return custAddressService.addAddress(custAddressRequest, userEmail);
     }
 
-    @GetMapping(value = "/all/address")
+    @GetMapping(value = "/all")
     @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
     public ResponseEntity<?> getAllAddress(@RequestHeader("userRole") String userRole) {
         return ResponseEntity.ok(custAddressService.getAllCustomerAddress());
     }
 
-    @GetMapping(value = "/get/address")
+    @GetMapping(value = "/get")
     @PreAuthorize("#userRole == 'CUSTOMER'")
     public ResponseEntity<?> getAllCustAddress(@RequestHeader("userEmail") String userEmail,
                                                @RequestHeader("userRole") String userRole) {
         return ResponseEntity.ok(custAddressService.getCustomerAddress(userEmail));
     }
 
-    @GetMapping(value = "/address/detail")
-    @PreAuthorize("#userRole == 'CUSTOMER'")
+    @GetMapping(value = "/detail")
     public ResponseEntity<?> getAddressDetail(int addressId,
                                               @RequestHeader("userEmail") String userEmail,
                                               @RequestHeader("userRole") String userRole) {
         return custAddressService.getAddressDetail(userEmail, addressId);
     }
 
-//    @PutMapping("/updateAdmin")
-//    public ResponseEntity<BaseResponse<?>> updateRestAgent(@Valid @RequestBody UpdateAdminRequest adminRequest) {
-//        return restAgentService.updateAdmin(adminRequest);
-//    }
-
-    @DeleteMapping("delete/address/{custAddressId}")
+    @DeleteMapping("/delete/{custAddressId}")
     @PreAuthorize("#userRole == 'CUSTOMER'")
     public ResponseEntity<BaseResponse<?>> deleteCustAddress(@PathVariable int custAddressId,
                                                              @RequestHeader("userEmail") String userEmail,

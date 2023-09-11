@@ -7,8 +7,6 @@ import com.example.food.delivery.AdminServiceImpl;
 import com.example.food.delivery.Response.UserCredentials;
 import com.example.food.delivery.UserDetailsServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,7 +15,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,9 +32,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
 
-//    @Autowired
-//    private RedisTemplate<String, String> redisTemplate;
-
     private static final Logger logger = LoggerFactory.getLogger(AuthTokenFilter.class);
 
     @Override
@@ -45,16 +39,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String uuid = parseJwt(request);
-//            System.out.println("uuid" + request);
             String jwt = jwtUtils.getTokenByUuid(uuid);
-            System.out.println("uuid" + uuid);
 
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
                 String email = jwtUtils.getUserEmailFromJwtToken(jwt);
 
-                Claims claim = jwtUtils.getUserRoleFromJwtToken(jwt);
                 String role = jwtUtils.extractRoleFromToken(jwt);
-System.out.println("Role" + role);
                 UserCredentials userCredentials = new UserCredentials();
                 userCredentials.setEmail(email);
                 userCredentials.setRole(role);
@@ -68,7 +58,6 @@ System.out.println("Role" + role);
                                 userDetails,
                                 null,
                                 userDetails.getAuthorities());
-                System.out.println("Is user authenticated? " + authentication.isAuthenticated());
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -78,7 +67,6 @@ System.out.println("Role" + role);
         }
         filterChain.doFilter(request, response);
     }
-
 
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");

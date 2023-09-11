@@ -44,10 +44,6 @@ public class CustomerController {
         return custService.getAllCustomer(userEmail, page);
     }
 
-//    @PutMapping("/updateAdmin")
-//    public ResponseEntity<BaseResponse<?>> updateRestAgent(@Valid @RequestBody UpdateAdminRequest adminRequest) {
-//        return restAgentService.updateAdmin(adminRequest);
-//    }
 
     @DeleteMapping("/delete/customer")
     @PreAuthorize("#userRole == 'CUSTOMER'")
@@ -56,9 +52,4 @@ public class CustomerController {
         return custService.deleteCustomer(userEmail);
     }
 
-//    @GetMapping(value = "/customer/isValidCustomer")
-////    @PreAuthorize("hasRole('CUSTOMER')")
-//    public ResponseEntity<?> getIsValidCustomer(@RequestParam String custEmail) {
-//        return custService.isValidCustomerEmail(custEmail);
-//    }
 }

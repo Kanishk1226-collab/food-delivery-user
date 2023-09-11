@@ -35,11 +35,6 @@ public class RestaurantAgentController {
         return restAgentService.logoutRestAgent(restAgentEmail);
     }
 
-//    @GetMapping("/isRestAgentLoggedIn")
-//    public ResponseEntity<BaseResponse<?>> isRestAgentLoggedIn(@RequestParam String restAgentEmail) {
-//        return restAgentService.isRestAgentLoggedIn(restAgentEmail);
-//    }
-
     @GetMapping(value = "/getRestAgents")
     @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
     public ResponseEntity<?> getAllRestAgents(@RequestParam int page,
@@ -48,23 +43,13 @@ public class RestaurantAgentController {
         return restAgentService.getAllRestAgents(page);
     }
 
-//    @GetMapping(value = "/isValidRestAgent")
-//    public ResponseEntity<?> isValidRestAgent(@RequestParam String restAgentEmail) {
-//        return restAgentService.isValidRestAgent(restAgentEmail);
-//    }
-
-    @PutMapping(value = "/approve/delAgent")
+    @PutMapping(value = "/delAgent/approve")
     @PreAuthorize("#userRole == 'RESTAURANT_AGENT'")
     public ResponseEntity<?> approveDeliveryAgent(@RequestParam String delAgentEmail,
                                                   @RequestHeader("userEmail") String userEmail,
                                                   @RequestHeader("userRole") String userRole) {
         return restAgentService.approveDeliveryAgent(delAgentEmail, userEmail);
     }
-
-//    @PutMapping("/updateAdmin")
-//    public ResponseEntity<BaseResponse<?>> updateRestAgent(@Valid @RequestBody UpdateAdminRequest adminRequest) {
-//        return restAgentService.updateAdmin(adminRequest);
-//    }
 
     @DeleteMapping("/delete/restAgent")
     @PreAuthorize("#userRole == 'RESTAURANT_AGENT'")

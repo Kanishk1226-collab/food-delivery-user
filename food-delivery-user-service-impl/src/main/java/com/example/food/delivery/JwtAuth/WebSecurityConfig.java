@@ -44,11 +44,6 @@ private UserDetailsService userDetailsService;
         return new AuthTokenFilter();
     }
 
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        return super.userDetailsService();
-//    }
-
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -74,9 +69,6 @@ private UserDetailsService userDetailsService;
         http.csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-//                .authorizeHttpRequests(auth -> auth.requestMatchers("/error","/customer/**", "/auth/**", "/swagger-resources/**","/swagger-ui/**","/v3/api-docs/**").permitAll()
-//                        .requestMatchers("/api/test/**").permitAll()
-//                        .anyRequest().authenticated()
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/**").permitAll()
                         .requestMatchers("/api/test/**").permitAll()
                         .anyRequest().authenticated()

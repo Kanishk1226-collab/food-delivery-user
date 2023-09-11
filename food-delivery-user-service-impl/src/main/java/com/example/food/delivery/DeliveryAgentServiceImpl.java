@@ -109,10 +109,6 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
     public synchronized ResponseEntity<BaseResponse<?>> logoutDelAgent(String delAgentEmail) {
         try {
             DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-//            if (!delAgent.getIsLoggedIn()) {
-//                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-//            }
-//            delAgent.setIsLoggedIn(false);
             delAgentRepository.save(delAgent);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Logout Successful");
         } catch(Exception e) {
@@ -133,52 +129,29 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(!delAgent.getIsVerified()) {
                 throw new UserManagementExceptions.UnauthorizedAccessException("You need to get verified by Restaurant Agent in order change status.");
             }
-            if(delAgent.getStatus() == DelAgentStatus.ON_DELIVERY) {
+            if(delAgent.getStatus() == DelAgentStatus.ON_DELIVERY && status.equals("NOT_AVAILABLE")) {
                 throw new UserManagementExceptions.UnauthorizedAccessException("You can't change your status while you're in ON_DELIVERY");
+            }
+
+            if(delAgentstatus.equals("NOT_AVAILABLE")) {
+                responseMessage = responseMessage + "Note: Changing the status to NOT AVAILABLE, it is Delivery Agent's responsibility " +
+                        "to change the status back to AVAILABLE.";
+                List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndStatusOrderByDeliveryCountAsc(delAgent.getRestAgentEmail(), DelAgentStatus.AVAILABLE);
+                if (deliveryAgent == null || deliveryAgent.isEmpty() || deliveryAgent.size() == 1) {
+                    throw new UserManagementExceptions.UserNotFoundException("Delivery Agent Not Available");
+                }
+                setRestAvailability(delAgent.getRestAgentEmail(), "NOT_DELIVERABLE");
+            } else {
+                setRestAvailability(delAgent.getRestAgentEmail(), "AVAILABLE");
             }
             delAgent.setStatus(DelAgentStatus.valueOf(delAgentstatus));
             delAgentRepository.save(delAgent);
-            if(delAgentstatus.equals("NOT_AVAILABLE")) {
-                setRestAvailability(delAgent.getRestAgentEmail(), "NOT_AVAILABLE");
-            }
-            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Availability status changed");
+            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, responseMessage);
         } catch(Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
         }
         return ResponseEntity.ok(response);
     }
-
-//    public void isValidDelAgent(String delAgentEmail) {
-//        if(!isValidEmail(delAgentEmail)) {
-//            throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
-//        }
-//        DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-//        if (delAgent == null) {
-//            throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
-//        }
-////        if (!delAgent.getIsLoggedIn()) {
-////            throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-////        }
-//    }
-
-//    public synchronized ResponseEntity<BaseResponse<?>> isDelAgentLoggedIn(String delAgentEmail) {
-//        try {
-//            if(!isValidEmail(delAgentEmail)) {
-//                throw new UserManagementExceptions.InvalidInputException("Enter Valid Email Id");
-//            }
-//            DeliveryAgent delAgent = delAgentRepository.findByDelAgentEmail(delAgentEmail);
-//            if (delAgent == null) {
-//                throw new UserManagementExceptions.UserNotFoundException("No Delivery Agent found for ID " + delAgentEmail);
-//            }
-////            if (!delAgent.getIsLoggedIn()) {
-////                throw new UserManagementExceptions.LoginException("Delivery Agent not logged in");
-////            }
-//            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Delivery Agent has Logged In");
-//        } catch(Exception e) {
-//            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-//        }
-//        return ResponseEntity.ok(response);
-//    }
 
     public synchronized ResponseEntity<?> getAllDeliveryAgents() {
         response = new BaseResponse<>(true,ResponseStatus.SUCCESS.getStatus(), null, delAgentRepository.findAll());
@@ -201,7 +174,7 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(!isValidEmail(restAgentEmail)) {
                 throw new UserManagementExceptions.InvalidInputException("Enter Valid Restaurant Agent Email");
             }
-            BaseResponse<?> isVerifiedRestaurant = restTemplate.getForObject("http://localhost:8082/restaurant-service/restaurant/isVerifiedRestaurant?restAgentEmail=" + restAgentEmail, BaseResponse.class);
+            BaseResponse<?> isVerifiedRestaurant = restTemplate.getForObject("http://localhost:8082/restaurant-service/restaurant/isVerified?restAgentEmail=" + restAgentEmail, BaseResponse.class);
             if(!isVerifiedRestaurant.isSuccess()) {
                 throw new UserManagementExceptions.RestTemplateException(isVerifiedRestaurant.getError());
             }
@@ -220,16 +193,12 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(!isValidEmail(restAgentEmail)) {
                 throw new UserManagementExceptions.InvalidInputException("Enter Valid Restaurant Agent Email");
             }
-            BaseResponse<?> isVerifiedRestaurant = restTemplate.getForObject("http://localhost:8082/restaurant-service/restaurant/isVerifiedRestaurant?restAgentEmail=" + restAgentEmail, BaseResponse.class);
-            if(!isVerifiedRestaurant.isSuccess()) {
-                throw new UserManagementExceptions.RestTemplateException(isVerifiedRestaurant.getError());
-            }
+
             List<DeliveryAgent> deliveryAgent = delAgentRepository.findByRestAgentEmailAndStatusOrderByDeliveryCountAsc(restAgentEmail, DelAgentStatus.AVAILABLE);
             if (deliveryAgent == null || deliveryAgent.isEmpty() || deliveryAgent.size() == 0) {
                 throw new UserManagementExceptions.UserNotFoundException("Delivery Agent Not Available");
             }
             deliveryAgent.get(0).setStatus(DelAgentStatus.ON_DELIVERY);
-            delAgentRepository.saveAll(deliveryAgent);
             DeliveryAgentResponse deliveryAgentResponse = new DeliveryAgentResponse();
             deliveryAgentResponse.setDelAgentName(deliveryAgent.get(0).getDelAgentName());
             deliveryAgentResponse.setDelAgentEmail(deliveryAgent.get(0).getDelAgentEmail());
@@ -237,6 +206,7 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if(deliveryAgent.size() == 1) {
                 setRestAvailability(deliveryAgent.get(0).getRestAgentEmail(), "NOT_DELIVERABLE");
             }
+            delAgentRepository.saveAll(deliveryAgent);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, deliveryAgentResponse);
         } catch (Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
@@ -267,7 +237,6 @@ public class DeliveryAgentServiceImpl implements DeliveryAgentService {
             if (deliveryAgent == null || deliveryAgent.isEmpty()) {
                 throw new UserManagementExceptions.UserNotFoundException("Delivery Agent Not Available");
             }
-
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Delivery Agent Available");
         } catch (Exception e) {
             response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);

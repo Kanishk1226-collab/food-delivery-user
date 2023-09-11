@@ -9,9 +9,11 @@ import com.example.food.delivery.Response.UserCredentials;
 import com.example.food.delivery.ServiceInterface.RestaurantAgentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -119,25 +121,8 @@ public class RestaurantAgentServiceImpl implements RestaurantAgentService {
     }
 
 
-
-
-//    public synchronized ResponseEntity<?> isValidRestAgent(String restAgentEmail) {
-//        try {
-//            isValidEmail(restAgentEmail);
-//            RestaurantAgent restAgent = restAgentRepository.findByRestAgentEmail(restAgentEmail);
-//            if(restAgent == null) {
-//                throw new UserManagementExceptions.UserNotFoundException("No user found");
-//            }
-//            response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Valid Rest Agent");
-//        } catch(Exception e) {
-//            response = new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), e.getMessage(), null);
-//        }
-//        return ResponseEntity.ok(response);
-//    }
-
     public synchronized ResponseEntity<BaseResponse<?>> getAllRestAgents(int page) {
         try {
-//            isAdminLoggedIn(email);
             int pageSize = 10;
             Sort sortById = Sort.by(Sort.Direction.DESC, "restAgentId");
             PageRequest pageRequest = PageRequest.of(page, pageSize, sortById);
@@ -160,17 +145,6 @@ public class RestaurantAgentServiceImpl implements RestaurantAgentService {
         return ResponseEntity.ok(response);
     }
 
-//    public synchronized void isAdminLoggedIn(String adminEmail) {
-//            isValidEmail(adminEmail);
-//            Admin admin = adminRepository.findByAdminEmail(adminEmail);
-//            if (admin == null) {
-//                throw new UserManagementExceptions.UserNotFoundException("No Admin found for ID " + adminEmail);
-//            }
-//            if (!admin.getIsLoggedIn()) {
-//                throw new UserManagementExceptions.LoginException("Admin not logged in");
-//            }
-//    }
-
     public synchronized ResponseEntity<?> approveDeliveryAgent(String delAgentEmail, String restAgentEmail) {
         try {
             isValidEmail(delAgentEmail);
@@ -187,6 +161,7 @@ public class RestaurantAgentServiceImpl implements RestaurantAgentService {
             }
             deliveryAgent.setIsVerified(true);
             deliveryAgent.setStatus(DelAgentStatus.AVAILABLE);
+
             delAgentRepository.save(deliveryAgent);
             response = new BaseResponse<>(true, ResponseStatus.SUCCESS.getStatus(), null, "Approved Delivery Agent");
         } catch(Exception e) {
@@ -200,7 +175,7 @@ public class RestaurantAgentServiceImpl implements RestaurantAgentService {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(email);
         if (!matcher.matches()) {
-            throw new UserManagementExceptions.InvalidInputException("Oser not found on Id " + email);
+            throw new UserManagementExceptions.InvalidInputException("User not found on Id " + email);
         }
     }
 

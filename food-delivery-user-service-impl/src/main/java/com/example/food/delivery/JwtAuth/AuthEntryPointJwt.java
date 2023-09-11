@@ -15,7 +15,6 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @Component
 public class AuthEntryPointJwt implements AuthenticationEntryPoint {

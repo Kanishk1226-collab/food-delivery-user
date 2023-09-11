@@ -31,24 +31,12 @@ public class DeliveryAgentController {
     }
 
     @PreAuthorize("#userRole == 'DELIVERY_AGENT'")
-    @PutMapping("/delAgent/logout")
-    public ResponseEntity<BaseResponse<?>> logoutDelAgent(@RequestHeader("userEmail") String userEmail,
-                                                          @RequestHeader("userRole") String userRole) {
-        return delAgentService.logoutDelAgent(userEmail);
-    }
-
-    @PreAuthorize("#userRole == 'DELIVERY_AGENT'")
-    @PutMapping("/setDelAgentAvailability")
+    @PutMapping("/delAgent/update/status")
     public ResponseEntity<BaseResponse<?>> setAvailability(@RequestParam String status,
                                                            @RequestHeader("userEmail") String userEmail,
                                                            @RequestHeader("userRole") String userRole) {
         return delAgentService.setDelAgentAvailability(userEmail, status);
     }
-
-//    @GetMapping("/isDeliveryAgentLoggedIn")
-//    public ResponseEntity<BaseResponse<?>> isDelAgentLoggedIn(@RequestParam String delAgentEmail) {
-//        return delAgentService.isDelAgentLoggedIn(delAgentEmail);
-//    }
 
     @PutMapping(value = "/request/delivery")
     @PreAuthorize("#userRole == 'DELIVERY_AGENT'")
@@ -58,30 +46,24 @@ public class DeliveryAgentController {
         return delAgentService.deliveryRequest(userEmail, restAgentEmail);
     }
 
-//    @PutMapping(value = "/assignDelivery")
-    @PutMapping(value = "assign/delAgent")
+    @PutMapping(value = "/assign/delAgent")
     public ResponseEntity<BaseResponse<?>> assignDeliveryAgent(@Valid @RequestParam String restaurantAgentEmail){
         return delAgentService.assignDeliveryAgent(restaurantAgentEmail);
     }
 
-    @GetMapping(value = "/delAgentAvailability")
+    @GetMapping(value = "/delAgent/checkStatus")
     public ResponseEntity<BaseResponse<?>> checkDeliveryAgentAvailability(@Valid @RequestParam String restaurantAgentEmail){
         return delAgentService.checkDeliveryAgentAvailability(restaurantAgentEmail);
     }
 
-    @GetMapping(value = "delAgent/all")
+    @GetMapping(value = "/delAgent/all")
     @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN' or #userRole == 'ADMIN'")
     public ResponseEntity<?> getAllDelAgents(@RequestHeader("userEmail") String userEmail,
                                              @RequestHeader("userRole") String userRole) {
         return ResponseEntity.ok(delAgentService.getAllDeliveryAgents());
     }
 
-//    @PutMapping("/updateAdmin")
-//    public ResponseEntity<BaseResponse<?>> updateRestAgent(@Valid @RequestBody UpdateAdminRequest adminRequest) {
-//        return restAgentService.updateAdmin(adminRequest);
-//    }
-
-    @DeleteMapping("delAgent/delete")
+    @DeleteMapping("/delAgent/delete")
     @PreAuthorize("#userRole == 'DELIVERY_AGENT'")
     public ResponseEntity<BaseResponse<?>> deleteDelAgent(@RequestHeader("userEmail") String userEmail,
                                                           @RequestHeader("userRole") String userRole) {

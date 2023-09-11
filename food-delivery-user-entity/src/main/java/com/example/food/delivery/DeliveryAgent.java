@@ -46,6 +46,7 @@ public class DeliveryAgent {
     private Boolean isVerified;
 
     @Column(name = EntityConstants.DELIVERY_AGENT_STATUS)
+    @Enumerated(EnumType.STRING)
     private DelAgentStatus status;
 
     @Column(name = EntityConstants.DELIVERY_COUNT)

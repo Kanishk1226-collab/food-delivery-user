@@ -38,7 +38,6 @@ public class JwtUtils {
 
     public String generateJwtToken(UserDetails userDetails) {
 
-//        UserDetails userPrincipal = userDetails.getAuthorities();
         Map<String, Object> claims = new HashMap<>();
         String email = userDetails.getUsername();
         String uuid = generateUuid();
@@ -80,27 +79,6 @@ public class JwtUtils {
         Claims claims = Jwts.parser().setSigningKey(key()).parseClaimsJws(token).getBody();
         return (String) claims.get("role");
     }
-
-    public Claims getUserRoleFromJwtToken(String token) {
-        return Jwts.parser().setSigningKey(key())
-                .parseClaimsJws(token).getBody();
-    }
-
-    public String getSubjectFromJwtToken(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(key())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject();
-        } catch (JwtException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-
 
     public boolean validateJwtToken(String authToken) {
         try {

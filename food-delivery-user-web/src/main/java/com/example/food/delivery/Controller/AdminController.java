@@ -43,11 +43,6 @@ public class AdminController {
         return adminService.logoutAdmin(userEmail);
     }
 
-//    @GetMapping("/isAdminLoggedIn")
-//    public ResponseEntity<BaseResponse<?>> isAdminLoggedIn(@RequestParam String adminEmail) {
-//        return adminService.isAdminLoggedIn(adminEmail);
-//    }
-
     @GetMapping(value = "/admin/all")
     @PreAuthorize("#userRole == 'SUPER_ADMIN' or #userRole == 'CO_ADMIN'")
     public ResponseEntity<BaseResponse<?>> getAllAdmins(@RequestParam int page,
@@ -79,10 +74,4 @@ public class AdminController {
             @RequestHeader("userEmail") String userEmail, @RequestHeader("userRole") String userRole) {
         return adminService.transferRoleAndDeleteSuperAdmin(userEmail, newSuperAdminEmail);
     }
-
-//    @GetMapping(value = "/isValidAdmin")
-//    public ResponseEntity<?> isValidAdmin(@RequestParam String adminEmail) {
-//        return adminService.isValidAdmin(adminEmail);
-//    }
-
 }

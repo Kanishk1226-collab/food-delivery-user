@@ -15,20 +15,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @RestControllerAdvice
 public class CustomExceptionHandler {
-
-//    @ExceptionHandler(UserManagementExceptions.ConstraintViolationException.class)
-//    public BaseResponse<Object> handleConstraintException(UserManagementExceptions.ConstraintViolationException exception) {
-//        AtomicReference<String> errorMessage = new AtomicReference<>(exception.getMessage());
-//        exception.getFieldErrors().forEach((fieldError -> {
-//            errorMessage.set(fieldError.getDefaultMessage());
-//        }));
-//        return new BaseResponse<>(null, HttpStatus.BAD_REQUEST.value(), errorMessage.get(), false);
-//    }
-//
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<BaseResponse<?>> handleGenericException(Exception ex) {
-//        return ResponseEntity.ok(BaseResponse.createSystemErrorResponse());
-//    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<BaseResponse<?>> handleGenericException(Exception ex) {
+        return ResponseEntity.ok(BaseResponse.createSystemErrorResponse());
+    }
 
     @ExceptionHandler(UserManagementExceptions.UnrecognizedTokenException.class)
     public ResponseEntity<String> handleUnrecognizedTokenException(UserManagementExceptions.UnrecognizedTokenException ex) {
@@ -50,14 +40,4 @@ public class CustomExceptionHandler {
     public BaseResponse<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException exception) throws IOException {
         return new BaseResponse<>(false, com.example.food.delivery.Response.ResponseStatus.ERROR.getStatus(), "Invalid request", false);
     }
-
-
-//    @ExceptionHandler(UserManagementExceptions.ConstraintViolationException.class)
-//    public BaseResponse<Object> handleMethodArgumentsException(MethodArgumentNotValidException exception) {
-//        AtomicReference<String> errorMessage = new AtomicReference<>(exception.getMessage());
-//        exception.getFieldErrors().forEach((fieldError -> {
-//            errorMessage.set(fieldError.getDefaultMessage());
-//        }));
-//        return new BaseResponse<>(false, ResponseStatus.ERROR.getStatus(), errorMessage.get(), null);
-//    }
 }
